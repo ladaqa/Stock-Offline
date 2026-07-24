@@ -146,7 +146,7 @@ tbody td{padding:8px 11px;vertical-align:middle;}
   <div class="nav-tab active" onclick="showPage('overview',this)">📊 Overview</div>
   <div class="nav-tab" onclick="showPage('compare',this)">⚖️ Compare</div>
   <div class="nav-tab" onclick="showPage('simulate',this)">🏆 Summary Top5</div>
-  <div class="nav-tab" onclick="showPage('stockspace',this)">📦 เพิ่มพื้นที่สต็อค</div>
+  <div class="nav-tab" onclick="showPage('stockspace',this)">📦 โอนสินค้าขายช้า</div>
   <div class="nav-right">
     <span id="data-src" class="data-src">📦 Built-in data</span>
     <button class="upload-btn" onclick="openUpload()">⬆️ อัปเดตข้อมูล</button>
@@ -556,7 +556,7 @@ function exportOVXlsx(){
 }
 
 function renderRecs(site,rows,noTx){
-  const top5=[...rows].sort((a,b)=>b.units_sold-a.units_sold).slice(0,5);
+  const top5=[...rows].filter(r=>r.stock_at_site>0).sort((a,b)=>b.units_sold-a.units_sold).slice(0,5);
   const top5Html=top5.map((r,i)=>{
     const ss=r.stock_at_site<3?`<span class="pill-r">⚠️ ${r.stock_at_site} ชิ้น</span>`:`<span class="pill-g">✅ ${r.stock_at_site}</span>`;
     let src='';
@@ -586,7 +586,7 @@ function renderRecs(site,rows,noTx){
     :brokenRows.map((r,i)=>{const oos=(r.sizes||[]).filter(s=>s.stock_at_site===0);return `<div class="rec-item"><div class="rrank rrank-r" style="background:#201a30">${i+1}</div><div class="rprod"><div class="rn">${r.product_name} (${r.color_display})</div><div class="rd">ขาด ${oos.length} ไซซ์: ${oos.map(s=>s.size_label).join(', ')}</div></div><div class="rmtr"><div style="font-weight:700;color:#9b8ecf">${oos.length}</div><div class="rl">ไซซ์ขาด</div></div></div>`;}).join('');
 
   document.getElementById('ov-recs').innerHTML=`
-    <div class="rec-card"><div class="rec-hdr"><div class="rec-icon ig">🏆</div><div><div style="font-weight:700">Top 5 — ห้ามของขาด</div><div style="font-size:11px;color:var(--muted)">ขายดีที่สุดที่สาขานี้</div></div></div>${top5Html||'<div class="empty-state">ยังไม่มียอดขาย</div>'}</div>
+    <div class="rec-card"><div class="rec-hdr"><div class="rec-icon ig">🏆</div><div><div style="font-weight:700">Top 5 — ห้ามของขาด</div><div style="font-size:11px;color:var(--muted)">ขายดีที่สุดที่สาขานี้ (เฉพาะที่ยังมีสต็อค)</div></div></div>${top5Html||'<div class="empty-state">ยังไม่มียอดขาย</div>'}</div>
     <div class="rec-card"><div class="rec-hdr"><div class="rec-icon ir">🔴</div><div><div style="font-weight:700">Dead Stock</div><div style="font-size:11px;color:var(--muted)">ขาย &lt;3 คู่ใน 3 เดือน — ต้องระบาย</div></div></div>${deadHtml}</div>
     <div class="rec-card"><div class="rec-hdr"><div class="rec-icon" style="background:#332200;font-size:18px">💸</div><div><div style="font-weight:700">Price Dependent</div><div style="font-size:11px;color:var(--muted)">ส่วนลดขายเฉลี่ย ≥50%</div></div></div>${discHtml}</div>
     <div class="rec-card"><div class="rec-hdr"><div class="rec-icon" style="background:#201a30;font-size:18px">🧩</div><div><div style="font-weight:700">Broken Run</div><div style="font-size:11px;color:var(--muted)">มีไซซ์หมดสต็อค — โอกาสขายหาย</div></div></div>${brokenHtml}</div>`;
@@ -887,7 +887,7 @@ function renderSIM(){
 }
 
 
-// ═══ STOCK SPACE (เพิ่มพื้นที่สต็อค) ═══
+// ═══ STOCK SPACE (โอนสินค้าขายช้า) ═══
 let _currentStockFilter='all';
 let _stockExportData=[];
 
@@ -906,7 +906,7 @@ function exportStockXlsx(){
     ..._stockExportData
   ]);
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,ws,'เพิ่มพื้นที่สต็อค');
+  XLSX.utils.book_append_sheet(wb,ws,'โอนสินค้าขายช้า');
   XLSX.writeFile(wb,'Clarks_DeathStock.xlsx');
 }
 

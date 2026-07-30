@@ -671,6 +671,7 @@ function toggleSimExp(btn){
   }
 }
 let _simExportData=[];
+let _simSiteArticles={};
 function exportSimXlsx(){
   if(!_simExportData.length){alert('ไม่มีข้อมูล');return;}
   const ws=XLSX.utils.aoa_to_sheet([
@@ -681,10 +682,19 @@ function exportSimXlsx(){
   XLSX.utils.book_append_sheet(wb,ws,'Summary Top5');
   XLSX.writeFile(wb,'Clarks_SummaryTop5.xlsx');
 }
+function exportSiteArticles(site){
+  const articles=_simSiteArticles[site]||[];
+  if(!articles.length){alert('ไม่มี Article ที่ต้องโอนเข้าสาขานี้');return;}
+  const ws=XLSX.utils.aoa_to_sheet([['Article'], ...articles.map(a=>[a])]);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Transfer In');
+  XLSX.writeFile(wb,`โอนสต็อคเข้า_Site_${site}.xlsx`);
+}
 function renderSIM(){
   const out=document.getElementById('sim-out');
   if(!out) return;
   _simExportData=[];
+  _simSiteArticles={};
 
   // ── 1. Sort sites by total units_sold DESC ──
   const siteTotals={};
@@ -754,10 +764,10 @@ function renderSIM(){
       // Per-size allocation
       const sizeAllocs=(r.sizes||[]).map(sz=>{
         const sc=sz.size_code;
-        if(sz.stock_at_site>0) return {sizeCode:sc,label:sz.size_label,type:'have',stock:sz.stock_at_site};
+        if(sz.stock_at_site>0) return {sizeCode:sc,label:sz.size_label,type:'have',stock:sz.stock_at_site,full_sku:sz.full_sku};
         if((fg_size[sku]||{})[sc]>0){
           fg_size[sku][sc]--;
-          return {sizeCode:sc,label:sz.size_label,type:'fg',src:'3000FG'};
+          return {sizeCode:sc,label:sz.size_label,type:'fg',src:'3000FG',full_sku:sz.full_sku};
         }
         const allDonors=Object.entries(donor_size[sku]||{})
           .filter(([ds,szs])=>ds!==site&&(szs[sc]||0)>0)
@@ -771,9 +781,9 @@ function renderSIM(){
           const isDeath=DS_SET.has(sku+'|'+sc+'|'+ds);
           const icon=isDeath?'⚰️ DS':(donor_meta[sku][ds]?.units_sold||0)===0?'⚰️':'🐌';
           const type=isDeath?'death':'store';
-          return {sizeCode:sc,label:sz.size_label,type,src:ds,icon};
+          return {sizeCode:sc,label:sz.size_label,type,src:ds,icon,full_sku:sz.full_sku};
         }
-        return {sizeCode:sc,label:sz.size_label,type:'none'};
+        return {sizeCode:sc,label:sz.size_label,type:'none',full_sku:sz.full_sku};
       });
 
       // Collect export data (OOS sizes only)
@@ -781,6 +791,10 @@ function renderSIM(){
         if(a.type==='have') return;
         const srcLabel=a.type==='fg'?'🏭 3000FG':a.type==='store'?`${a.icon} ${a.src}`:'⚠️ ไม่มีสต็อค';
         _simExportData.push([site,ri+1,r.product_name+' ('+r.color_display+')',sku,a.label,r.stock_at_site,a.label,srcLabel]);
+        if(a.type==='fg'||a.type==='store'||a.type==='death'){
+          if(!_simSiteArticles[site]) _simSiteArticles[site]=[];
+          if(!_simSiteArticles[site].includes(a.full_sku)) _simSiteArticles[site].push(a.full_sku);
+        }
       });
 
       // Summary badges for the main row
@@ -859,6 +873,7 @@ function renderSIM(){
           <div style="font-weight:700;font-size:14px">${site}${closingBadge}</div>
           <div style="font-size:11px;color:var(--muted)">ยอดขายรวม ${totalSold} ชิ้น • ได้รับ priority จาก 3000FG ลำดับที่ ${si+1}</div>
         </div>
+        <button onclick="exportSiteArticles('${site.replace(/'/g,"\\'")}')" style="background:var(--accent);color:#000;border:none;padding:5px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:600;white-space:nowrap">📥 Export Article</button>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:12px">
         <thead><tr style="border-bottom:1px solid var(--border)">
